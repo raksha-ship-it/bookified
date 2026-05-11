@@ -1,65 +1,189 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Book = {
+  id: string;
+  name: string;
+  file_url: string;
+  cover_url?: string | null;
+  author?: string | null;
+};
+
+export default function Page() {
+  const router = useRouter();
+
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ FETCH BOOKS
+  const fetchBooks = async () => {
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/books");
+
+      // ❌ API FAILED
+      if (!res.ok) {
+        console.error("Failed to fetch books");
+        setBooks([]);
+        return;
+      }
+
+      const data = await res.json();
+
+      console.log("BOOK API RESPONSE:", data);
+
+      // ✅ SAFE ARRAY CHECK
+      if (Array.isArray(data)) {
+        setBooks(data);
+      } else {
+        console.error("Books API did not return array");
+        setBooks([]);
+      }
+
+    } catch (err) {
+      console.error("FETCH BOOKS ERROR:", err);
+      setBooks([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooks();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-screen bg-[#f5efe6] text-gray-900">
+
+      {/* NAVBAR */}
+      <div className="flex justify-between items-center px-10 py-6 max-w-7xl mx-auto">
+        <h1 className="text-xl font-semibold">
+          📚 Bookified
+        </h1>
+
+        <div className="flex gap-8 text-sm text-gray-700 items-center">
+          <span className="font-semibold border-b-2 border-black pb-1">
+            Library
+          </span>
+
+          <button
+            onClick={() => router.push("/add-new")}
+            className="hover:text-black"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Add New
+          </button>
+
+          <span>Adrian</span>
         </div>
-      </main>
+      </div>
+
+      {/* MAIN */}
+      <div className="max-w-7xl mx-auto px-6">
+
+        {/* HERO */}
+        <div className="bg-[#e6d9a8] rounded-3xl px-12 py-14 flex justify-between items-center shadow-sm">
+
+          <div>
+            <h1 className="text-5xl font-bold mb-4">
+              Your Library
+            </h1>
+
+            <p className="text-gray-700 mb-6 max-w-md">
+              Convert your books into interactive AI conversations.
+            </p>
+
+            <button
+              onClick={() => router.push("/add-new")}
+              className="bg-white px-6 py-3 rounded-xl shadow"
+            >
+              + Add new book
+            </button>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-md text-sm w-[230px]">
+            <p>1️⃣ Upload PDF</p>
+            <p>2️⃣ AI Processing</p>
+            <p>3️⃣ Voice Chat</p>
+          </div>
+
+        </div>
+
+        {/* BOOKS */}
+        <div className="mt-20">
+
+          <h2 className="text-2xl font-semibold mb-8">
+            Recent Books
+          </h2>
+
+          {loading ? (
+            <p>Loading...</p>
+
+          ) : books.length === 0 ? (
+
+            <p className="text-gray-500">
+              No books yet
+            </p>
+
+          ) : (
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+
+              {books.map((book) => {
+
+                const cover =
+                  book.cover_url &&
+                  book.cover_url.trim() !== ""
+                    ? book.cover_url
+                    : "/default-book.png";
+
+                return (
+                  <div
+                    key={book.id}
+                    onClick={() => router.push(`/book/${book.id}`)}
+                    className="group cursor-pointer"
+                  >
+
+                    {/* COVER */}
+                    <div className="h-[260px] bg-gray-200 rounded-2xl overflow-hidden shadow">
+
+                      <img
+                        src={cover}
+                        alt={book.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/default-book.png";
+                        }}
+                      />
+
+                    </div>
+
+                    {/* INFO */}
+                    <div className="mt-3">
+
+                      <p className="font-semibold text-sm truncate">
+                        {book.name}
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        {book.author || "Unknown Author"}
+                      </p>
+
+                    </div>
+
+                  </div>
+                );
+              })}
+
+            </div>
+
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }
