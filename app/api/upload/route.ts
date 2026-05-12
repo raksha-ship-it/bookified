@@ -1,8 +1,8 @@
+export const maxDuration = 60;
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 import OpenAI from "openai";
 import PDFParser from "pdf2json";
-
 export const runtime = "nodejs";
 
 const openai = new OpenAI({
