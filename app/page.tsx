@@ -1,188 +1,62 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Vapi from "@vapi-ai/web";
 
-type Book = {
-  id: string;
-  name: string;
-  file_url: string;
-  cover_url?: string | null;
-  author?: string | null;
-};
+const MY_BOOK_ID = "a93f87b3-10ba-4d9b-b300-dd0ad5719cc8"; 
 
 export default function Page() {
-  const router = useRouter();
+  const [vapi, setVapi] = useState<any>(null);
+  const [isTalking, setIsTalking] = useState(false);
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ✅ FIX: useEffect is NOT async
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
+    if (!key) return;
 
-  // ✅ FETCH BOOKS
-  const fetchBooks = async () => {
+    const v = new Vapi(key);
+    setVapi(v);
+
+    v.on("call-start", () => setIsTalking(true));
+    v.on("call-end", () => setIsTalking(false));
+
+    return () => {
+      v.stop();
+    };
+  }, []);
+
+  const startVoice = async () => {
+    if (!vapi) return;
     try {
-      setLoading(true);
-
-      const res = await fetch("/api/books");
-
-      // ❌ API FAILED
-      if (!res.ok) {
-        console.error("Failed to fetch books");
-        setBooks([]);
-        return;
-      }
-
-      const data = await res.json();
-
-      console.log("BOOK API RESPONSE:", data);
-
-      // ✅ SAFE ARRAY CHECK
-      if (Array.isArray(data)) {
-        setBooks(data);
-      } else {
-        console.error("Books API did not return array");
-        setBooks([]);
-      }
-
-    } catch (err) {
-      console.error("FETCH BOOKS ERROR:", err);
-      setBooks([]);
-    } finally {
-      setLoading(false);
+      await vapi.start("6b6cda5d-86e6-416e-ac45-34be5d401d4d", {
+        metadata: { bookId: MY_BOOK_ID },
+        assistantOverride: { metadata: { bookId: MY_BOOK_ID } }
+      });
+    } catch (e) {
+      console.error("Vapi Error:", e);
     }
   };
 
-  useEffect(() => {
-    fetchBooks();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-[#f5efe6] text-gray-900">
-
-      {/* NAVBAR */}
-      <div className="flex justify-between items-center px-10 py-6 max-w-7xl mx-auto">
-        <h1 className="text-xl font-semibold">
-          📚 Bookified
-        </h1>
-
-        <div className="flex gap-8 text-sm text-gray-700 items-center">
-          <span className="font-semibold border-b-2 border-black pb-1">
-            Library
-          </span>
-
-          <button
-            onClick={() => router.push("/add-new")}
-            className="hover:text-black"
-          >
-            Add New
-          </button>
-
-          <span>Adrian</span>
-        </div>
-      </div>
-
-      {/* MAIN */}
-      <div className="max-w-7xl mx-auto px-6">
-
-        {/* HERO */}
-        <div className="bg-[#e6d9a8] rounded-3xl px-12 py-14 flex justify-between items-center shadow-sm">
-
-          <div>
-            <h1 className="text-5xl font-bold mb-4">
-              Your Library
-            </h1>
-
-            <p className="text-gray-700 mb-6 max-w-md">
-              Convert your books into interactive AI conversations.
-            </p>
-
-            <button
-              onClick={() => router.push("/add-new")}
-              className="bg-white px-6 py-3 rounded-xl shadow"
-            >
-              + Add new book
-            </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-md text-sm w-[230px]">
-            <p>1️⃣ Upload PDF</p>
-            <p>2️⃣ AI Processing</p>
-            <p>3️⃣ Voice Chat</p>
-          </div>
-
-        </div>
-
-        {/* BOOKS */}
-        <div className="mt-20">
-
-          <h2 className="text-2xl font-semibold mb-8">
-            Recent Books
-          </h2>
-
-          {loading ? (
-            <p>Loading...</p>
-
-          ) : books.length === 0 ? (
-
-            <p className="text-gray-500">
-              No books yet
-            </p>
-
-          ) : (
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
-
-              {books.map((book) => {
-
-                const cover =
-                  book.cover_url &&
-                  book.cover_url.trim() !== ""
-                    ? book.cover_url
-                    : "/default-book.png";
-
-                return (
-                  <div
-                    key={book.id}
-                    onClick={() => router.push(`/book/${book.id}`)}
-                    className="group cursor-pointer"
-                  >
-
-                    {/* COVER */}
-                    <div className="h-[260px] bg-gray-200 rounded-2xl overflow-hidden shadow">
-
-                      <img
-                        src={cover}
-                        alt={book.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/default-book.png";
-                        }}
-                      />
-
-                    </div>
-
-                    {/* INFO */}
-                    <div className="mt-3">
-
-                      <p className="font-semibold text-sm truncate">
-                        {book.name}
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        {book.author || "Unknown Author"}
-                      </p>
-
-                    </div>
-
-                  </div>
-                );
-              })}
-
-            </div>
-
-          )}
-
-        </div>
+    <div className="min-h-screen bg-black flex items-center justify-center p-5 font-sans">
+      <div className="bg-white p-10 rounded-[50px] text-center shadow-2xl w-full max-w-sm">
+        <h1 className="text-2xl font-black mb-2 tracking-tighter">VOICE LIBRARIAN</h1>
+        <p className="text-gray-500 mb-8 font-bold text-xs uppercase tracking-widest">
+          Rich Dad Poor Dad Session
+        </p>
+        
+        <button 
+          onClick={isTalking ? () => vapi.stop() : startVoice}
+          className={`w-32 h-32 rounded-full border-8 border-black text-4xl shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center mx-auto ${
+            isTalking ? 'bg-red-500' : 'bg-white'
+          }`}
+        >
+          {isTalking ? "⏹" : "🎤"}
+        </button>
+        
+        <p className={`mt-8 font-black uppercase tracking-tighter ${isTalking ? 'animate-pulse text-red-500' : 'text-black'}`}>
+          {isTalking ? "I AM LISTENING..." : "TAP TO TALK"}
+        </p>
       </div>
     </div>
   );

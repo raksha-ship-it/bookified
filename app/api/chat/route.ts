@@ -6,110 +6,56 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const vapiMessage = body.message;
+    const query = vapiMessage?.transcript || vapiMessage?.content || body.query;
+    
+    // Using the ID we confirmed is in your database
+    const bookId = "a93f87b3-10ba-4d9b-b300-dd0ad5719cc8"; 
 
-    const query = body.query;
-    const bookId = body.bookId;
+    if (!query || query === "undefined") return NextResponse.json({});
 
-    console.log("QUESTION:", query);
-    console.log("BOOK ID:", bookId);
+    console.log(`--- 🔍 RAG SEARCH: "${query}" ---`);
 
-    // -----------------------------
-    // CREATE QUERY EMBEDDING
-    // -----------------------------
-    const embeddingResponse = await openai.embeddings.create({
+    // 1. Generate the embedding
+    const emb = await openai.embeddings.create({
       model: "text-embedding-3-small",
       input: query,
     });
 
-    const embedding = embeddingResponse.data[0].embedding;
-
-    console.log("EMBEDDING CREATED");
-
-    // -----------------------------
-    // SEARCH CHUNKS
-    // -----------------------------
-    const { data, error } = await supabase.rpc(
-      "match_book_chunks",
-      {
-        query_embedding: embedding,
-        match_count: 5,
-        filter_book_id: bookId,
-      }
-    );
-
-    console.log("MATCH DATA:", data);
-    console.log("MATCH ERROR:", error);
-
-    if (error) {
-      throw error;
-    }
-
-    // -----------------------------
-    // NO RESULTS
-    // -----------------------------
-    if (!data || data.length === 0) {
-      return NextResponse.json({
-        answer: "I couldn't find that in the book.",
-      });
-    }
-
-    // -----------------------------
-    // BUILD CONTEXT
-    // -----------------------------
-    const context = data
-      .map((item: any) => item.content)
-      .join("\n\n");
-
-    console.log("CONTEXT LENGTH:", context.length);
-
-    // -----------------------------
-    // ASK GPT
-    // -----------------------------
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Answer ONLY using the provided book context.",
-        },
-        {
-          role: "user",
-          content: `
-BOOK CONTEXT:
-${context}
-
-QUESTION:
-${query}
-          `,
-        },
-      ],
+    // 2. Query Supabase
+    const { data: chunks, error } = await supabase.rpc("match_book_chunks", {
+      query_embedding: emb.data[0].embedding,
+      match_threshold: 0.01, 
+      match_count: 5,
+      target_book_id: bookId, 
     });
 
-    const answer =
-      completion.choices[0].message.content ||
-      "No answer found.";
+    if (error) throw error;
 
+    // 3. Prepare Context
+    const context = chunks?.length 
+      ? chunks.map((c: any) => c.content).join("\n\n") 
+      : "No direct snippets found.";
+
+    console.log(`✅ Found ${chunks?.length || 0} chunks. Sending to Riley.`);
+
+    // 4. Return formatted for Vapi's Server URL
     return NextResponse.json({
-      answer,
+      message: [
+        {
+          role: "assistant",
+          content: `Using the book's context: ${context} \n\n User asked: ${query}`
+        }
+      ]
     });
 
   } catch (err: any) {
-    console.error("CHAT ERROR:", err);
-
-    return NextResponse.json(
-      {
-        error: err.message || "Chat failed",
-      },
-      { status: 500 }
-    );
+    console.error("VAPI ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

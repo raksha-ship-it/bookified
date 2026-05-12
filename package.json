@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.105.3",
     "@vapi-ai/web": "^2.5.2",
     "next": "16.2.4",
-    "openai": "^6.36.0",
+    "openai": "^6.37.0",
     "pdf-parse": "^1.0.9",
+    "pdf2json": "^4.0.3",
     "pdfjs-dist": "^5.7.284",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
